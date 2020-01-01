@@ -216,9 +216,10 @@ class BaseBot:
 @dataclass
 class BaseDistributedBot(BaseBot):
     """Base Interface to Model Training and Inference"""
-    strategy: tf.distribute.Strategy
+    strategy: tf.distribute.Strategy = None
 
     def __post_init__(self):
+        assert strategy is not None
         assert self.gradient_accumulation_steps == 1, (
             "Distribution mode doesn't suppoprt gradient accumulation"
         )
