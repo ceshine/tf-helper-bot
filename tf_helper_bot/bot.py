@@ -219,7 +219,7 @@ class BaseDistributedBot(BaseBot):
     strategy: tf.distribute.Strategy = None
 
     def __post_init__(self):
-        assert strategy is not None
+        assert self.strategy is not None
         assert self.gradient_accumulation_steps == 1, (
             "Distribution mode doesn't suppoprt gradient accumulation"
         )
