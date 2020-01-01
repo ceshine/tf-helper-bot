@@ -4,8 +4,8 @@ from collections import deque, defaultdict
 from typing import Dict, Tuple, List, Optional
 from pathlib import Path
 
-import torch
 import numpy as np
+import tensorflow as tf
 try:
     import wandb
     WANDB = True
@@ -20,7 +20,7 @@ __all__ = [
 
 
 class Callback:
-    def on_batch_inputs(self, bot: BaseBot, input_tensors: torch.Tensor, targets: torch.Tensor):
+    def on_batch_inputs(self, bot: BaseBot, input_tensors: tf.Tensor, targets: tf.Tensor):
         return input_tensors, targets
 
     def on_train_starts(self, bot: BaseBot):
