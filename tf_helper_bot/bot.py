@@ -19,7 +19,6 @@ class BaseBot:
     criterion: Callable
     model: tf.keras.Model
     optimizer: tf.keras.optimizers.Optimizer
-    strategy: tf.distribute.Strategy
     name: str = "basebot"
     log_dir: Union[Path, str] = "./logs"
     log_level: int = logging.INFO
