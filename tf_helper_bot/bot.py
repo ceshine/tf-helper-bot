@@ -120,7 +120,7 @@ class BaseBot:
                     input_tensors, targets = self.run_batch_inputs_callbacks(
                         input_tensors, targets)
                     input_tensor_list.append(input_tensors)
-                    cnt += input_tensors.shape[0]
+                    cnt += self.get_batch_size(input_tensors)
                     if len(input_tensor_list) == self.gradient_accumulation_steps:
                         loss = self.train_one_step(
                             input_tensor_list, targets
@@ -186,6 +186,11 @@ class BaseBot:
             metrics[metric.name] = (metric_loss, metric_string)
         return metrics
 
+    def get_batch_size(self, input_tensors):
+        if isinstance(input_tensors, list):
+            return input_tensors[0].shape[0]
+        return input_tensors.shape[0]
+
     def run_batch_inputs_callbacks(self, input_tensors, targets):
         for callback in self.callbacks:
             input_tensors, targets = callback.on_batch_inputs(
@@ -240,3 +245,13 @@ class BaseDistributedBot(BaseBot):
         return self.strategy.reduce(
             tf.distribute.ReduceOp.MEAN, loss, axis=None
         )
+
+    def get_batch_size(self, input_tensors):
+        if isinstance(input_tensors, list):
+            x_per_gpu_as_list = self.strategy.experimental_local_results(
+                input_tensors[0])
+        else:
+            x_per_gpu_as_list = self.strategy.experimental_local_results(
+                input_tensors)
+        batch_sizes = [tf.shape(x_gpu)[0] for x_gpu in x_per_gpu_as_list]
+        return tf.reduce_sum(tf.stack(batch_sizes)).numpy()
