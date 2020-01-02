@@ -45,7 +45,7 @@ class BaseBot:
                 output = self.model(
                     input_tensors, training=True)
                 loss_ = self.criterion(
-                    target, self.extract_prediction(output)
+                    target, self._extract_prediction(output)
                 )
             gradients_ = tape.gradient(
                 loss_, self.model.trainable_variables)
@@ -97,7 +97,11 @@ class BaseBot:
         return loss
 
     @staticmethod
-    def extract_prediction(output):
+    def _extract_prediction(output):
+        """Can be overridden to act as a shortcut to transform model outputs.
+
+        Useful when using a pretrained model whose outputs are not in the desired format.
+        """
         return output
 
     def train(self, *, checkpoint_interval, n_steps=None, total_steps=None):
@@ -151,13 +155,23 @@ class BaseBot:
             # Train ends
             self.run_train_ends_callbacks()
 
+    def predict_batch(self, input_tensors):
+        """To be overriden in distributed modes"""
+        return self._extract_prediction(
+            self._predict_batch(input_tensors)
+        )
+
+    def _extract_target_for_eval(self, target):
+        return target
+
     def predict(self, dataset, *, return_y=False):
         self.model.eval()
         outputs, y_global = [], []
         for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar):
-            outputs.append(self._predict_batch(input_tensors).numpy())
+            outputs.append(self.predict_batch(input_tensors).numpy())
             if return_y:
-                y_global.append(y_local.numpy())
+                y_global.append(
+                    self._extract_target_for_eval(y_local).numpy())
         outputs = np.concatenate(outputs, axis=0)
         if return_y:
             y_global = np.concatenate(y_global, axis=0)
@@ -170,8 +184,9 @@ class BaseBot:
         losses, weights = [], []
         self.logger.debug("Evaluating...")
         for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar, total=self.valid_steps):
-            output = self.extract_prediction(
+            output = self._extract_prediction(
                 self._predict_batch(input_tensors))
+            y_local = self._extract_target_for_eval(y_local)
             batch_loss = self.criterion(y_local, output)
             losses.append(batch_loss.numpy())
             weights.append(y_local.shape[0])
@@ -235,7 +250,7 @@ class BaseDistributedBot(BaseBot):
                 input_tensor_list[0], target)
             self._step_optimizer(gradients)
             return loss
-            
+
         self._train_one_step = train_one_step
 
     def train_one_step(self, input_tensors, target):
@@ -250,6 +265,7 @@ class BaseDistributedBot(BaseBot):
     def get_batch_size(self, input_tensors):
         # Just use a rough estimate for speed
         return 1
+        # the following can be slow (and unnecessary in most cases)
         # if isinstance(input_tensors, list):
         #     x_per_gpu_as_list = self.strategy.experimental_local_results(
         #         input_tensors[0])
@@ -258,6 +274,12 @@ class BaseDistributedBot(BaseBot):
         #         input_tensors)
         # batch_sizes = [tf.shape(x_gpu)[0] for x_gpu in x_per_gpu_as_list]
         # return tf.reduce_sum(tf.stack(batch_sizes)).numpy()
+
+    def _extract_target_for_eval(self, target):
+        return tf.concat(
+            self.strategy.experimental_local_results(target),
+            axis=0
+        )
 
     def predict_batch(self, input_tensors):
         preds = self.strategy.experimental_run_v2(
@@ -268,43 +290,3 @@ class BaseDistributedBot(BaseBot):
             self.strategy.experimental_local_results(preds), axis=0
         )
         return preds_local
-
-    def predict(self, dataset, *, return_y=False):
-        self.model.eval()
-        outputs, y_global = [], []
-        for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar):
-            outputs.append(self.predict_batch(input_tensors).numpy())
-            if return_y:
-                y_global.append(
-                    self.strategy.experimental_local_results(y_local).numpy()
-                )
-        outputs = np.concatenate(outputs, axis=0)
-        if return_y:
-            y_global = np.concatenate(y_global, axis=0)
-            return outputs, y_global
-        return outputs
-
-    def eval(self, dataset):
-        """Warning: Only support datasets whose predictions and labels together fit in memory."""
-        preds, ys = [], []
-        losses, weights = [], []
-        self.logger.debug("Evaluating...")
-        for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar, total=self.valid_steps):
-            output = self.extract_prediction(
-                self.predict_batch(input_tensors))
-            y_local = tf.concat(
-                self.strategy.experimental_local_results(y_local), axis=0
-            )
-            batch_loss = self.criterion(y_local, output)
-            losses.append(batch_loss.numpy())
-            weights.append(y_local.shape[0])
-            # Save batch labels and predictions
-            preds.append(output.numpy())
-            ys.append(y_local.numpy())
-        loss = np.average(losses, weights=weights)
-        metrics = {"loss": (loss, self.loss_format % loss)}
-        global_ys, global_preds = np.concatenate(ys), np.concatenate(preds)
-        for metric in self.metrics:
-            metric_loss, metric_string = metric(global_ys, global_preds)
-            metrics[metric.name] = (metric_loss, metric_string)
-        return metrics
