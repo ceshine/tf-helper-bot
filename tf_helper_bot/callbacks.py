@@ -108,7 +108,6 @@ class MovingAverageStatsTrackerCallback(Callback):
 class CheckpointCallback(Callback):
     """Save and manage checkpoints.
 
-    Only works when training with single GPU.
     TODO: Checkpoints that can be used to resume training
     """
 
@@ -128,7 +127,7 @@ class CheckpointCallback(Callback):
         target_value, target_string = metrics[self.monitor_metric]
         target_path = (
             self.checkpoint_dir /
-            "ckpt_{}_{}_{}_{}.5".format(
+            "ckpt_{}_{}_{}_{}.h5".format(
                 bot.name, target_string, bot.step,
                 datetime.now().strftime("%m%d%H%M"))
         )
