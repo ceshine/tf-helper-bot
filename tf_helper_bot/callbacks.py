@@ -2,7 +2,7 @@ import socket
 from datetime import datetime
 from collections import deque, defaultdict
 from typing import Dict, Tuple, List, Optional
-from pathlib import Path
+from pathlib import Path, Union
 
 import numpy as np
 import tensorflow as tf
@@ -108,17 +108,18 @@ class MovingAverageStatsTrackerCallback(Callback):
 class CheckpointCallback(Callback):
     """Save and manage checkpoints.
 
+    Only works when training with single GPU.
     TODO: Checkpoints that can be used to resume training
     """
 
     def __init__(
             self, keep_n_checkpoints: int = 1,
-            checkpoint_dir: Path = Path("./data/cache/model_cache/"),
+            checkpoint_dir: Union[Path, str] = Path("./data/cache/model_cache/"),
             monitor_metric: str = "loss"):
         super().__init__()
         assert keep_n_checkpoints > 0
         self.keep_n_checkpoints = keep_n_checkpoints
-        self.checkpoint_dir = checkpoint_dir
+        self.checkpoint_dir = Path(checkpoint_dir)
         self.monitor_metric = monitor_metric
         self.best_performers: List[Tuple[float, Path, int]] = []
         self.checkpoint_dir.mkdir(exist_ok=True, parents=True)
