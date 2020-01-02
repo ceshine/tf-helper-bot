@@ -185,7 +185,7 @@ class BaseBot:
         self.logger.debug("Evaluating...")
         for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar, total=self.valid_steps):
             output = self._extract_prediction(
-                self._predict_batch(input_tensors))
+                self.predict_batch(input_tensors))
             y_local = self._extract_target_for_eval(y_local)
             batch_loss = self.criterion(y_local, output)
             losses.append(batch_loss.numpy())
