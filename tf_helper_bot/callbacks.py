@@ -15,7 +15,8 @@ except ImportError:
 from .bot import BaseBot
 
 __all__ = [
-    "Callback", "MovingAverageStatsTrackerCallback"
+    "Callback", "MovingAverageStatsTrackerCallback",
+    "CheckpointCallback"
 ]
 
 
@@ -102,3 +103,53 @@ class MovingAverageStatsTrackerCallback(Callback):
         self.train_weights = deque(maxlen=self.avg_window)
         self.metrics = defaultdict(list)
         self.train_logs = []
+
+
+class CheckpointCallback(Callback):
+    """Save and manage checkpoints.
+
+    TODO: Checkpoints that can be used to resume training
+    """
+
+    def __init__(
+            self, keep_n_checkpoints: int = 1,
+            checkpoint_dir: Path = Path("./data/cache/model_cache/"),
+            monitor_metric: str = "loss"):
+        super().__init__()
+        assert keep_n_checkpoints > 0
+        self.keep_n_checkpoints = keep_n_checkpoints
+        self.checkpoint_dir = checkpoint_dir
+        self.monitor_metric = monitor_metric
+        self.best_performers: List[Tuple[float, Path, int]] = []
+        self.checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
+    def on_eval_ends(self, bot: BaseBot, metrics: Dict[str, Tuple[float, str]]):
+        target_value, target_string = metrics[self.monitor_metric]
+        target_path = (
+            self.checkpoint_dir /
+            "ckpt_{}_{}_{}_{}.5".format(
+                bot.name, target_string, bot.step,
+                datetime.now().strftime("%m%d%H%M"))
+        )
+        bot.logger.debug("Saving checkpoint %s...", target_path)
+        if (
+            len(self.best_performers) < self.keep_n_checkpoints or
+            target_value < self.best_performers[-1][0]
+        ):
+            self.best_performers.append((target_value, target_path, bot.step))
+            self.remove_checkpoints(keep=self.keep_n_checkpoints)
+            bot.model.save_weights(str(target_path))
+            assert target_path.exists()
+
+    def remove_checkpoints(self, keep):
+        self.best_performers = sorted(self.best_performers, key=lambda x: x[0])
+        for checkpoint in np.unique([
+                x[1] for x in self.best_performers[keep:]]):
+            Path(checkpoint).unlink()
+        self.best_performers = self.best_performers[:keep]
+
+    def reset(self, ignore_previous=False):
+        if ignore_previous:
+            self.best_performers = []
+        else:
+            self.remove_checkpoints(0)
