@@ -1,8 +1,8 @@
 import socket
 from datetime import datetime
 from collections import deque, defaultdict
-from typing import Dict, Tuple, List, Optional
-from pathlib import Path, Union
+from typing import Dict, Tuple, List, Optional, Union
+from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
