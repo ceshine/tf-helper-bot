@@ -1,5 +1,6 @@
 import socket
-from datetime import datetime
+from datetime import datetime, timedelta
+from time import time
 from collections import deque, defaultdict
 from typing import Dict, Tuple, List, Optional, Union
 from pathlib import Path
@@ -50,7 +51,7 @@ class Callback:
 
 
 class MovingAverageStatsTrackerCallback(Callback):
-    """Log moving average of training losses, and report evaluation metrics.   
+    """Log moving average of training losses, and report evaluation metrics.
     """
 
     def __init__(self, avg_window: int, log_interval: int):
@@ -58,6 +59,10 @@ class MovingAverageStatsTrackerCallback(Callback):
         self.avg_window = avg_window
         self.log_interval = log_interval
         self.reset()
+        self.timer: float = 0.0
+
+    def on_train_starts(self, bot: BaseBot):
+        self.timer = time()
 
     def on_step_ends(self, bot: BaseBot, train_loss, train_weight):
         self.train_losses.append(train_loss)
@@ -69,9 +74,12 @@ class MovingAverageStatsTrackerCallback(Callback):
                 bot.optimizer.lr(bot.step) if callable(bot.optimizer.lr)
                 else bot.optimizer.lr
             )
+            speed = (time() - self.timer) / self.log_interval
+            # reset timer
+            self.timer = time()
             bot.logger.info(
-                f"Step %s: loss {bot.loss_format} lr: %.3e",
-                bot.step, train_loss_avg, lr)
+                f"Step %5d | loss {bot.loss_format} | lr %.2e | %.3fs per step",
+                bot.step, train_loss_avg, lr, speed)
             self.train_logs.append(train_loss_avg)
 
     def on_eval_ends(self, bot: BaseBot, metrics: Dict[str, Tuple[float, str]]):
