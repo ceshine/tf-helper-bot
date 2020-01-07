@@ -68,8 +68,9 @@ class MovingAverageStatsTrackerCallback(Callback):
         self.train_losses.append(train_loss)
         self.train_weights.append(train_weight)
         if bot.step % self.log_interval == 0:
+            # print(len(self.train_weights), len(self.train_losses))
             train_loss_avg = np.average(
-                self.train_losses, weights=self.train_weights)
+                self.train_losses, weights=self.train_weights, axis=0)
             lr = (
                 bot.optimizer.lr(bot.step) if callable(bot.optimizer.lr)
                 else bot.optimizer.lr

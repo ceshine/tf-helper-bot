@@ -189,8 +189,7 @@ class BaseBot:
         losses, weights = [], []
         self.logger.debug("Evaluating...")
         for input_tensors, y_local in tqdm(dataset, disable=not self.pbar, total=self.valid_steps):
-            output = self._extract_prediction(
-                self.predict_batch(input_tensors))
+            output = self.predict_batch(input_tensors)
             y_local = self._extract_target_for_eval(y_local)
             batch_loss = self.criterion(y_local, output)
             losses.append(batch_loss.numpy())
@@ -293,7 +292,10 @@ class BaseDistributedBot(BaseBot):
             self._predict_batch,
             args=(input_tensors,)
         )
+        if isinstance(preds, tuple):
+            # WARNING: This might not applicable in all situations
+            preds = preds[0]
         preds_local = tf.concat(
-            self.strategy.experimental_local_results(preds), axis=0
+            preds.values, axis=0
         )
         return preds_local
