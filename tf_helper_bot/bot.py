@@ -77,12 +77,12 @@ class BaseBot:
     def train_one_step(self, input_tensor_list, target):
         loss, gradients = self._get_gradient(
             input_tensor_list[0], target)
-        div_ = tf.constant(
-            self.gradient_accumulation_steps,
-            dtype=tf.float32
-        )
-        gradients = [x / div_ for x in gradients]
         if self.gradient_accumulation_steps > 1:
+            div_ = tf.constant(
+                self.gradient_accumulation_steps,
+                dtype=tf.float32
+            )
+            gradients = [x / div_ for x in gradients]
             loss, gradients = self._get_gradient(
                 input_tensor_list[0], target)
             for i in range(1, self.gradient_accumulation_steps):
