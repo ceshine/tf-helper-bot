@@ -190,7 +190,7 @@ class BaseBot:
         preds, ys = [], []
         losses, weights = [], []
         self.logger.debug("Evaluating...")
-        for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar, total=self.valid_steps):
+        for input_tensors, y_local in tqdm(dataset, disable=not self.pbar, total=self.valid_steps):
             output = self._extract_prediction(
                 self.predict_batch(input_tensors))
             y_local = self._extract_target_for_eval(y_local)
@@ -210,7 +210,9 @@ class BaseBot:
 
     def get_batch_size(self, input_tensors):
         if isinstance(input_tensors, list):
-            return input_tensors[0].shape[0]
+            return self.get_batch_size(input_tensors[0])
+        elif isinstance(input_tensors, dict):
+            return self.get_batch_size(list(input_tensors.values())[0])
         return input_tensors.shape[0]
 
     def run_batch_inputs_callbacks(self, input_tensors, targets):

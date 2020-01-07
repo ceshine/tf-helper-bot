@@ -74,6 +74,8 @@ class MovingAverageStatsTrackerCallback(Callback):
                 bot.optimizer.lr(bot.step) if callable(bot.optimizer.lr)
                 else bot.optimizer.lr
             )
+            if not isinstance(lr, float):
+                lr = lr.numpy()
             speed = (time() - self.timer) / self.log_interval
             # reset timer
             self.timer = time()
