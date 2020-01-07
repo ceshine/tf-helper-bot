@@ -68,6 +68,12 @@ class BaseBot:
         self._step_optimizer = step_optimizer
         self._predict_batch = predict_batch
 
+    @staticmethod
+    def _sum_indexed_slice(grad_1, grad_2):
+        values = tf.concat([grad_1.values, grad_2.values], 0)
+        indices = tf.concat([grad_1.indices, grad_2.indices], 0)
+        return tf.IndexedSlices(values, indices)
+
     def train_one_step(self, input_tensor_list, target):
         loss, gradients = self._get_gradient(
             input_tensor_list[0], target)
@@ -78,7 +84,8 @@ class BaseBot:
                 loss_, gradients_ = self._get_gradient(
                     input_tensor_list[i], target)
                 gradients = [
-                    grad_1 + grad_2
+                    grad_1 + grad_2 if not isinstance(grad_1, tf.IndexedSlices)
+                    else self._sum_indexed_slice(grad_1, grad_2)
                     for grad_1, grad_2 in zip(gradients, gradients_)
                 ]
                 loss = loss + loss_
