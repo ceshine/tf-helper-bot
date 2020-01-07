@@ -69,14 +69,19 @@ class BaseBot:
         self._predict_batch = predict_batch
 
     @staticmethod
-    def _sum_indexed_slice(grad_1, grad_2):
-        values = tf.concat([grad_1.values, grad_2.values], 0)
+    def _sum_indexed_slice(grad_1, grad_2, div_):
+        values = tf.concat([grad_1.values, grad_2.values / div_], 0)
         indices = tf.concat([grad_1.indices, grad_2.indices], 0)
         return tf.IndexedSlices(values, indices)
 
     def train_one_step(self, input_tensor_list, target):
         loss, gradients = self._get_gradient(
             input_tensor_list[0], target)
+        div_ = tf.constant(
+            self.gradient_accumulation_steps,
+            dtype=tf.float32
+        )
+        gradients = [x / div_ for x in gradients]
         if self.gradient_accumulation_steps > 1:
             loss, gradients = self._get_gradient(
                 input_tensor_list[0], target)
@@ -84,18 +89,11 @@ class BaseBot:
                 loss_, gradients_ = self._get_gradient(
                     input_tensor_list[i], target)
                 gradients = [
-                    grad_1 + grad_2 if not isinstance(grad_1, tf.IndexedSlices)
-                    else self._sum_indexed_slice(grad_1, grad_2)
+                    grad_1 + grad_2 / div_ if not isinstance(grad_1, tf.IndexedSlices)
+                    else self._sum_indexed_slice(grad_1, grad_2, div_)
                     for grad_1, grad_2 in zip(gradients, gradients_)
                 ]
                 loss = loss + loss_
-            gradients = [
-                grad / tf.constant(
-                    self.gradient_accumulation_steps,
-                    dtype=tf.float32
-                )
-                for grad in gradients
-            ]
             loss = loss / tf.constant(
                 self.gradient_accumulation_steps,
                 dtype=tf.float32
