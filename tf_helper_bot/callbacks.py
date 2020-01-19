@@ -224,3 +224,41 @@ class TelegramCallback(Callback):
         ]
         text = '\n'.join(contents)
         self.telegram_bot.send_message(chat_id=self.chat_id, text=text)
+
+
+class WandbCallback(Callback):
+    """ Callback for the Weights and Biases service
+
+    Prerequisites: install `wandb` and run `wandb login`.
+
+    WARNING: Resuming is not fully supported yet.
+
+    Reference: https://github.com/wandb/client/raw/ef0911c47beebab0db8749d764802057d3480e69/wandb/fastai/__init__.py
+    """
+
+    def __init__(self, config: Dict, name: str, watch_level: Optional[str] = None, watch_freq: int = 100):
+        if WANDB is False:
+            raise ImportError(
+                "Please install 'wandb' before using WandbCallback.")
+        # project name can only be in lower case
+        wandb.init(config=config, project=name.lower())
+        self.watch_level = watch_level
+        self.watch_freq = watch_freq
+
+    def on_train_starts(self, bot: BaseBot):
+        wandb.watch(bot.model, log=self.watch_level,
+                    log_freq=self.watch_freq)
+
+    def on_step_ends(self, bot: BaseBot, train_loss: float, train_weight: int):
+        wandb.log({"train_loss": train_loss}, step=bot.step)
+
+    def on_eval_ends(self, bot: BaseBot, metrics: Dict[str, Tuple[float, str]]):
+        metrics_ = {
+            metric_name: metric_value
+            for metric_name, (metric_value, _) in metrics.items()
+        }
+        # Rename to avoid conflicts
+        metrics_["val_loss"] = metrics_["loss"]
+        del metrics_["loss"]
+        # NOTE: remember to train one more step to sync the final eval metrics to the server
+        wandb.log(metrics_, step=bot.step)
