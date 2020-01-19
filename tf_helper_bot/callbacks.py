@@ -236,18 +236,12 @@ class WandbCallback(Callback):
     Reference: https://github.com/wandb/client/raw/ef0911c47beebab0db8749d764802057d3480e69/wandb/fastai/__init__.py
     """
 
-    def __init__(self, config: Dict, name: str, watch_level: Optional[str] = None, watch_freq: int = 100):
+    def __init__(self, config: Dict, name: str):
         if WANDB is False:
             raise ImportError(
                 "Please install 'wandb' before using WandbCallback.")
         # project name can only be in lower case
         wandb.init(config=config, project=name.lower())
-        self.watch_level = watch_level
-        self.watch_freq = watch_freq
-
-    def on_train_starts(self, bot: BaseBot):
-        wandb.watch(bot.model, log=self.watch_level,
-                    log_freq=self.watch_freq)
 
     def on_step_ends(self, bot: BaseBot, train_loss: float, train_weight: int):
         wandb.log({"train_loss": train_loss}, step=bot.step)

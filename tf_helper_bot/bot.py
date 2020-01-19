@@ -135,7 +135,7 @@ class BaseBot:
                             input_tensor_list, targets
                         )
                         # Step ends
-                        self.run_step_ends_callbacks(loss, cnt)
+                        self.run_step_ends_callbacks(loss.numpy(), cnt)
                         input_tensor_list, cnt = [], 0
                     if (
                         (callable(checkpoint_interval) and checkpoint_interval(self.step)) or
