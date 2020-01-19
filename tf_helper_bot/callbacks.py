@@ -17,7 +17,7 @@ from .bot import BaseBot
 
 __all__ = [
     "Callback", "MovingAverageStatsTrackerCallback",
-    "CheckpointCallback", "TelegramCallback"
+    "CheckpointCallback", "TelegramCallback", "WandbCallback"
 ]
 
 
