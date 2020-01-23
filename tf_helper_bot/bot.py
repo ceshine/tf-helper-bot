@@ -45,16 +45,18 @@ class BaseBot:
             with tf.GradientTape() as tape:
                 output = self.model(
                     input_tensors, training=True)
-                loss_ = self.criterion(
+                loss_raw = self.criterion(
                     target, self._extract_prediction(output)
                 )
-                if self.mixed_precision:
-                    loss_ = self.optimizer.get_scaled_loss(loss_)
+                loss_ = (
+                    self.optimizer.get_scaled_loss(loss_raw)
+                    if self.mixed_precision else loss_raw
+                )
             gradients_ = tape.gradient(
                 loss_, self.model.trainable_variables)
             if self.mixed_precision:
                 gradients_ = self.optimizer.get_unscaled_gradients(gradients_)
-            return loss_, gradients_
+            return loss_raw, gradients_
 
         @tf.function
         def step_optimizer(gradients):
