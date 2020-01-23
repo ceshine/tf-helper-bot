@@ -31,6 +31,7 @@ class BaseBot:
     gradient_accumulation_steps: int = 1
     metrics: Sequence = ()
     callbacks: Sequence = ()
+    mixed_precision: bool = False
 
     def __post_init__(self):
         self._gradients = []
@@ -47,8 +48,12 @@ class BaseBot:
                 loss_ = self.criterion(
                     target, self._extract_prediction(output)
                 )
+                if self.mixed_precision:
+                    loss_ = self.optimizer.get_scaled_loss(loss_)
             gradients_ = tape.gradient(
                 loss_, self.model.trainable_variables)
+            if self.mixed_precision:
+                gradients_ = self.optimizer.get_unscaled_gradients(gradients_)
             return loss_, gradients_
 
         @tf.function

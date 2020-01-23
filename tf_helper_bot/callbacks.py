@@ -231,6 +231,8 @@ class WandbCallback(Callback):
 
     Prerequisites: install `wandb` and run `wandb login`.
 
+    Note: train a few more steps after the last eval to make sure the log is complete.
+
     WARNING: Resuming is not fully supported yet.
 
     Reference: https://github.com/wandb/client/raw/ef0911c47beebab0db8749d764802057d3480e69/wandb/fastai/__init__.py
