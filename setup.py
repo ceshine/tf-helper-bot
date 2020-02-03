@@ -1,13 +1,10 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(
     name='tf_helper_bot',
     version='0.0.1',
     packages=['tf_helper_bot'],
-    install_requires=[
-    ],
-    extras_require={
-    },
+    install_requires=[],
     classifiers=[  # Optional
         # How mature is this project? Common values are
         #   3 - Alpha
