@@ -1,9 +1,11 @@
 import tensorflow as tf
 
 
-def prepare_tpu():
+def prepare_tpu(tpu=None, zone=None, project=None):
     try:
-        tpu = tf.distribute.cluster_resolver.TPUClusterResolver()  # TPU detection
+        tpu = tf.distribute.cluster_resolver.TPUClusterResolver(
+            tpu=tpu, zone=zone, project=project
+        )  # TPU detection
         print('Running on TPU ', tpu.cluster_spec().as_dict()['worker'])
     except ValueError:
         tpu = None
