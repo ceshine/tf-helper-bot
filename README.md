@@ -2,4 +2,4 @@
 
 Writing powerful custom training loops for Tensorflow 2.x with less code.
 
-(This is basically the TF port of [pytorch-helper-bot](https://github.com/ceshine/pytorch-helper-bot))
+(This is basically a TF port of [pytorch-helper-bot](https://github.com/ceshine/pytorch-helper-bot))
