@@ -93,13 +93,13 @@ class BaseBot:
         indices = tf.concat([grad_1.indices, grad_2.indices], 0)
         return tf.IndexedSlices(values, indices)
 
-    def train_one_step(self, input_tensor_list, target):
+    def train_one_step(self, input_tensor_list, target_list):
         loss, gradients = self._get_gradient(
-            input_tensor_list[0], target)
+            input_tensor_list[0], target_list[0])
         if self.gradient_accumulation_steps > 1:
             for i in range(1, self.gradient_accumulation_steps):
                 loss_, gradients_ = self._get_gradient(
-                    input_tensor_list[i], target)
+                    input_tensor_list[i], target_list[i])
                 # accu ops
                 gradients = self._accu_grad(gradients, gradients_)
                 loss = loss + loss_
@@ -124,7 +124,7 @@ class BaseBot:
         elif self.total_steps is None:
             self.total_steps = n_steps
         target_step = self.step + n_steps
-        input_tensor_list, cnt = [], 0
+        input_tensor_list, target_list, cnt = [], [], 0
         # Train starts
         self.run_train_starts_callbacks()
         try:
@@ -134,14 +134,15 @@ class BaseBot:
                     input_tensors, targets = self.run_batch_inputs_callbacks(
                         input_tensors, targets)
                     input_tensor_list.append(input_tensors)
+                    target_list.append(targets)
                     cnt += self.get_batch_size(input_tensors)
                     if len(input_tensor_list) == self.gradient_accumulation_steps:
                         loss = self.train_one_step(
-                            input_tensor_list, targets
+                            input_tensor_list, target_list
                         )
                         # Step ends
                         self.run_step_ends_callbacks(loss.numpy(), cnt)
-                        input_tensor_list, cnt = [], 0
+                        input_tensor_list, target_list, cnt = [], [], 0
                     if (
                         (callable(checkpoint_interval) and checkpoint_interval(self.step)) or
                         (
