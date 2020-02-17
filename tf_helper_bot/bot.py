@@ -45,12 +45,16 @@ class BaseBot:
 
         @tf.function(experimental_compile=USE_XLA)
         def get_gradient(input_tensors, target):
+            div_ = tf.constant(
+                self.gradient_accumulation_steps,
+                dtype=tf.float32
+            )
             with tf.GradientTape() as tape:
                 output = self.model(
                     input_tensors, training=True)
                 loss_raw = self.criterion(
                     target, self._extract_prediction(output)
-                )
+                ) / div_
                 loss_ = (
                     self.optimizer.get_scaled_loss(loss_raw)
                     if self.mixed_precision else loss_raw
@@ -71,12 +75,17 @@ class BaseBot:
             )
 
         @tf.function(experimental_compile=USE_XLA)
+        def accu_grad(gradients_1, gradients_2):
+            return [a + b for a, b in zip(gradients_1, gradients_2)]
+
+        @tf.function(experimental_compile=USE_XLA)
         def predict_batch(input_tensors):
             return self.model(input_tensors, training=False)
 
         self._get_gradient = get_gradient
         self._step_optimizer = step_optimizer
         self._predict_batch = predict_batch
+        self._accu_grad = accu_grad
 
     @staticmethod
     def _sum_indexed_slice(grad_1, grad_2):
@@ -97,17 +106,9 @@ class BaseBot:
             for i in range(1, self.gradient_accumulation_steps):
                 loss_, gradients_ = self._get_gradient(
                     input_tensor_list[i], target)
-                gradients = [
-                    grad_1 + grad_2 if not isinstance(grad_1, tf.IndexedSlices)
-                    else self._sum_indexed_slice(grad_1, grad_2)
-                    for grad_1, grad_2 in zip(gradients, gradients_)
-                ]
+                # accu ops
+                gradients = self._accu_grad(gradients, gradients_)
                 loss = loss + loss_
-            gradients = [x / div_ for x in gradients]
-            loss = loss / tf.constant(
-                self.gradient_accumulation_steps,
-                dtype=tf.float32
-            )
         self._step_optimizer(gradients)
         return loss
 
