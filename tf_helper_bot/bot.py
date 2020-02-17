@@ -97,12 +97,6 @@ class BaseBot:
         loss, gradients = self._get_gradient(
             input_tensor_list[0], target)
         if self.gradient_accumulation_steps > 1:
-            div_ = tf.constant(
-                self.gradient_accumulation_steps,
-                dtype=tf.float32
-            )
-            loss, gradients = self._get_gradient(
-                input_tensor_list[0], target)
             for i in range(1, self.gradient_accumulation_steps):
                 loss_, gradients_ = self._get_gradient(
                     input_tensor_list[i], target)

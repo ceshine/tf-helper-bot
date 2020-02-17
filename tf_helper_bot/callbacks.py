@@ -59,7 +59,6 @@ class MovingAverageStatsTrackerCallback(Callback):
         self.avg_window = avg_window
         self.log_interval = log_interval
         self.reset()
-        self.timer: float = 0.0
 
     def on_train_starts(self, bot: BaseBot):
         self.timer = time()
@@ -110,6 +109,7 @@ class MovingAverageStatsTrackerCallback(Callback):
                 )
 
     def reset(self):
+        self.timer: float = 0.0
         self.train_losses = deque(maxlen=self.avg_window)
         self.train_weights = deque(maxlen=self.avg_window)
         self.metrics = defaultdict(list)
