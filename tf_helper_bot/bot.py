@@ -79,8 +79,8 @@ class BaseBot:
         self._predict_batch = predict_batch
 
     @staticmethod
-    def _sum_indexed_slice(grad_1, grad_2, div_):
-        values = tf.concat([grad_1.values, grad_2.values / div_], 0)
+    def _sum_indexed_slice(grad_1, grad_2):
+        values = tf.concat([grad_1.values, grad_2.values], 0)
         indices = tf.concat([grad_1.indices, grad_2.indices], 0)
         return tf.IndexedSlices(values, indices)
 
@@ -92,18 +92,18 @@ class BaseBot:
                 self.gradient_accumulation_steps,
                 dtype=tf.float32
             )
-            gradients = [x / div_ for x in gradients]
             loss, gradients = self._get_gradient(
                 input_tensor_list[0], target)
             for i in range(1, self.gradient_accumulation_steps):
                 loss_, gradients_ = self._get_gradient(
                     input_tensor_list[i], target)
                 gradients = [
-                    grad_1 + grad_2 / div_ if not isinstance(grad_1, tf.IndexedSlices)
-                    else self._sum_indexed_slice(grad_1, grad_2, div_)
+                    grad_1 + grad_2 if not isinstance(grad_1, tf.IndexedSlices)
+                    else self._sum_indexed_slice(grad_1, grad_2)
                     for grad_1, grad_2 in zip(gradients, gradients_)
                 ]
                 loss = loss + loss_
+            gradients = [x / div_ for x in gradients]
             loss = loss / tf.constant(
                 self.gradient_accumulation_steps,
                 dtype=tf.float32
