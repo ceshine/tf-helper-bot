@@ -1,3 +1,4 @@
+import os
 import logging
 from pathlib import Path
 from typing import Callable, Sequence, Union, Optional
@@ -8,6 +9,8 @@ from dataclasses import dataclass, field
 from tqdm.autonotebook import tqdm
 
 from .logger import Logger
+
+USE_XLA = os.environ.get("TF_XLA")
 
 
 @dataclass
@@ -40,7 +43,7 @@ class BaseBot:
             echo=self.echo
         )
 
-        @tf.function
+        @tf.function(experimental_compile=USE_XLA)
         def get_gradient(input_tensors, target):
             with tf.GradientTape() as tape:
                 output = self.model(
@@ -58,7 +61,7 @@ class BaseBot:
                 gradients_ = self.optimizer.get_unscaled_gradients(gradients_)
             return loss_raw, gradients_
 
-        @tf.function
+        @tf.function(experimental_compile=USE_XLA)
         def step_optimizer(gradients):
             self.optimizer.apply_gradients(
                 zip(
@@ -67,7 +70,7 @@ class BaseBot:
                 )
             )
 
-        @tf.function
+        @tf.function(experimental_compile=USE_XLA)
         def predict_batch(input_tensors):
             return self.model(input_tensors, training=False)
 
@@ -257,7 +260,7 @@ class BaseDistributedBot(BaseBot):
             "Distribution mode doesn't suppoprt gradient accumulation"
         )
         super().__post_init__()
-        @tf.function
+        @tf.function(experimental_compile=USE_XLA)
         def train_one_step(input_tensor_list, target):
             loss, gradients = self._get_gradient(
                 input_tensor_list[0], target)
