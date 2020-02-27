@@ -257,18 +257,18 @@ class BaseDistributedBot(BaseBot):
         )
         super().__post_init__()
         @tf.function(experimental_compile=USE_XLA)
-        def train_one_step(input_tensor_list, target):
+        def train_one_step(input_tensor_list, target_list):
             loss, gradients = self._get_gradient(
-                input_tensor_list[0], target)
+                input_tensor_list[0], target_list[0])
             self._step_optimizer(gradients)
             return loss
 
         self._train_one_step = train_one_step
 
-    def train_one_step(self, input_tensors, target):
+    def train_one_step(self, input_tensors_list, target_list):
         loss = self.strategy.experimental_run_v2(
             self._train_one_step,
-            args=(input_tensors, target)
+            args=(input_tensors_list, target_list)
         )
         return self.strategy.reduce(
             tf.distribute.ReduceOp.MEAN, loss, axis=None
