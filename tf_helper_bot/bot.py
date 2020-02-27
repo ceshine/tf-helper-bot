@@ -198,10 +198,10 @@ class BaseBot:
             output = self.predict_batch(input_tensors)
             y_local = self._extract_target_for_eval(y_local)
             batch_loss = self.criterion(y_local, output)
-            losses.append(batch_loss.numpy())
+            losses.append(batch_loss.numpy().astype(np.float32))
             weights.append(y_local.shape[0])
             # Save batch labels and predictions
-            preds.append(output.numpy())
+            preds.append(output.numpy().astype(np.float32))
             ys.append(y_local.numpy())
         loss = np.average(losses, weights=weights)
         metrics = {"loss": (loss, self.loss_format % loss)}
