@@ -178,7 +178,7 @@ class BaseBot:
     def predict(self, dataset, *, return_y=False):
         self.model.eval()
         outputs, y_global = [], []
-        for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar):
+        for *input_tensors, y_local in tqdm(dataset, disable=not self.pbar, ncols=100):
             outputs.append(self.predict_batch(input_tensors).numpy())
             if return_y:
                 y_global.append(
