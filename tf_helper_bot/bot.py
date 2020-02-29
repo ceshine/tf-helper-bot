@@ -82,6 +82,14 @@ class BaseBot:
         def predict_batch(input_tensors):
             return self.model(input_tensors, training=False)
 
+        @tf.function(experimental_compile=USE_XLA)
+        def train_one_step(input_tensor_list, target_list):
+            loss, gradients = self._get_gradient(
+                input_tensor_list[0], target_list[0])
+            self._step_optimizer(gradients)
+            return loss
+
+        self._fused_train_one_step = train_one_step
         self._get_gradient = get_gradient
         self._step_optimizer = step_optimizer
         self._predict_batch = predict_batch
@@ -94,16 +102,18 @@ class BaseBot:
         return tf.IndexedSlices(values, indices)
 
     def train_one_step(self, input_tensor_list, target_list):
-        loss, gradients = self._get_gradient(
-            input_tensor_list[0], target_list[0])
         if self.gradient_accumulation_steps > 1:
+            loss, gradients = self._get_gradient(
+                input_tensor_list[0], target_list[0])
             for i in range(1, self.gradient_accumulation_steps):
                 loss_, gradients_ = self._get_gradient(
                     input_tensor_list[i], target_list[i])
                 # accu ops
                 gradients = self._accu_grad(gradients, gradients_)
                 loss = loss + loss_
-        self._step_optimizer(gradients)
+            self._step_optimizer(gradients)
+        else:
+            self._fused_train_one_step(input_tensor_list, target_list)
         return loss
 
     @staticmethod
@@ -256,18 +266,10 @@ class BaseDistributedBot(BaseBot):
             "Distribution mode doesn't suppoprt gradient accumulation"
         )
         super().__post_init__()
-        @tf.function(experimental_compile=USE_XLA)
-        def train_one_step(input_tensor_list, target_list):
-            loss, gradients = self._get_gradient(
-                input_tensor_list[0], target_list[0])
-            self._step_optimizer(gradients)
-            return loss
-
-        self._train_one_step = train_one_step
 
     def train_one_step(self, input_tensors_list, target_list):
         loss = self.strategy.experimental_run_v2(
-            self._train_one_step,
+            self._fused_train_one_step,
             args=(input_tensors_list, target_list)
         )
         return self.strategy.reduce(
