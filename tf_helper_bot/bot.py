@@ -113,7 +113,7 @@ class BaseBot:
                 loss = loss + loss_
             self._step_optimizer(gradients)
         else:
-            self._fused_train_one_step(input_tensor_list, target_list)
+            loss = self._fused_train_one_step(input_tensor_list, target_list)
         return loss
 
     @staticmethod
