@@ -4,7 +4,7 @@ setup(
     name='tf_helper_bot',
     version='0.0.1',
     packages=['tf_helper_bot'],
-    install_requires=[],
+    install_requires=['typeguard>=2.7.1', 'tqdm', 'tensorflow_probability'],
     classifiers=[  # Optional
         # How mature is this project? Common values are
         #   3 - Alpha
