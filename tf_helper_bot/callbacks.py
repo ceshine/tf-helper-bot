@@ -238,7 +238,8 @@ class WandbCallback(Callback):
     Reference: https://github.com/wandb/client/raw/ef0911c47beebab0db8749d764802057d3480e69/wandb/fastai/__init__.py
     """
 
-    def __init__(self, config: Dict, name: str):
+    def __init__(self, config: Dict, name: str, step_interval: int = 2):
+        self.step_interval = step_interval
         if WANDB is False:
             raise ImportError(
                 "Please install 'wandb' before using WandbCallback.")
@@ -246,7 +247,13 @@ class WandbCallback(Callback):
         wandb.init(config=config, project=name.lower())
 
     def on_step_ends(self, bot: BaseBot, train_loss: float, train_weight: int):
-        wandb.log({"train_loss": train_loss}, step=bot.step)
+        if bot.step % self.step_interval != 0:
+            return
+        lr = (
+            bot.optimizer.lr(bot.step) if callable(bot.optimizer.lr)
+            else bot.optimizer.lr
+        )
+        wandb.log({"train_loss": train_loss, "lr": lr}, step=bot.step)
 
     def on_eval_ends(self, bot: BaseBot, metrics: Dict[str, Tuple[float, str]]):
         metrics_ = {
