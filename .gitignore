@@ -24,3 +24,5 @@ core
 .bash_history
 data
 wandb/
+build/
+dist/
