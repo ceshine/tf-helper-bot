@@ -238,13 +238,13 @@ class WandbCallback(Callback):
     Reference: https://github.com/wandb/client/raw/ef0911c47beebab0db8749d764802057d3480e69/wandb/fastai/__init__.py
     """
 
-    def __init__(self, config: Dict, name: str, step_interval: int = 2):
+    def __init__(self, config: Dict, name: str, run_name: Optional[str] = None, step_interval: int = 2):
         self.step_interval = step_interval
         if WANDB is False:
             raise ImportError(
                 "Please install 'wandb' before using WandbCallback.")
         # project name can only be in lower case
-        wandb.init(config=config, project=name.lower())
+        wandb.init(config=config, project=name.lower(), name=run_name)
 
     def on_step_ends(self, bot: BaseBot, train_loss: float, train_weight: int):
         if bot.step % self.step_interval != 0:
